@@ -30,8 +30,8 @@ public class VideoToTextConverter {
     }
 
     public String convertToText(MultipartFile videoFile, String outputDir) throws Exception {
-        // First convert video to audio
-        String audioPath = VideoToAudioConverter.convertToMp3(videoFile, outputDir);
+        // First convert video to audio using a fixed output directory
+        String audioPath = VideoToAudioConverter.convertToMp3(videoFile, "media/audio");
         File audioFile = new File(audioPath);
 
         System.out.println("audioPath" +  audioPath);

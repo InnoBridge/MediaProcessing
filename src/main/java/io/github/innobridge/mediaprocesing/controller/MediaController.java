@@ -132,13 +132,7 @@ public class MediaController {
                 required = true,
                 content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE)
             )
-            @RequestParam("file") MultipartFile file,
-            
-            @Parameter(
-                description = "Output directory path (optional, defaults to system temp directory)",
-                required = false
-            )
-            @RequestParam(value = "outputDir", required = false) String outputDir) {
+            @RequestParam("file") MultipartFile file) {
         
         TranscriptionResponse response = new TranscriptionResponse();
         long startTime = System.currentTimeMillis();
@@ -149,12 +143,8 @@ public class MediaController {
             return ResponseEntity.badRequest().body(response);
         }
 
-        String targetDir = outputDir != null && !outputDir.trim().isEmpty() 
-            ? outputDir.trim() 
-            : System.getProperty("java.io.tmpdir") + "/uploads";
-        
         try {
-            String transcription = videoToTextConverter.convertToText(file, targetDir);
+            String transcription = videoToTextConverter.convertToText(file, "media/audio");
             
             response.setStatus("success");
             response.setText(transcription);
