@@ -67,6 +67,10 @@ public class VideoToTextConverter {
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
+            // Clean up the audio file after transcription
+            if (audioFile != null && audioFile.exists()) {
+                audioFile.delete();
+            }
         }
         return transcribedText.toString();
     }
