@@ -31,3 +31,13 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Whisper Models
+src/main/resources/models/
+
+# Media Files
+media/video/
