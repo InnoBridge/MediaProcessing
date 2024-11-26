@@ -13,20 +13,7 @@ import static org.bytedeco.ffmpeg.global.avcodec.*;
 
 public class VideoToAudioConverter {
 
-    public static String convertToWav(MultipartFile videoFile, String outputDir) throws Exception {
-        File wavFile = convertToAudioFile(videoFile, outputDir, MediaType.WAV);
-        return wavFile.getAbsolutePath();
-    }
-
-    public static File convertToWavFile(MultipartFile videoFile, String outputDir) throws Exception {
-        return convertToAudioFile(videoFile, outputDir, MediaType.WAV);
-    }
-
-    public static File convertToMp3File(MultipartFile videoFile, String outputDir) throws Exception {
-        return convertToAudioFile(videoFile, outputDir, MediaType.MP3);
-    }
-
-    private static File convertToAudioFile(MultipartFile videoFile, String outputDir, 
+    public static File convertToAudioFile(MultipartFile videoFile, String outputDir, 
                                          MediaType format) throws Exception {
         // Validate output directory
         File directory = new File(outputDir);
@@ -101,5 +88,10 @@ public class VideoToAudioConverter {
                 }
             }
         }
+    }
+
+        public static String convertToWav(MultipartFile videoFile, String outputDir) throws Exception {
+        File wavFile = convertToAudioFile(videoFile, outputDir, MediaType.WAV);
+        return wavFile.getAbsolutePath();
     }
 }
