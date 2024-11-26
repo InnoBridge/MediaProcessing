@@ -9,7 +9,7 @@ import java.util.UUID;
 
 public class VideoToAudioConverter {
     
-    public static String convertToMp3(MultipartFile videoFile, String outputDir) throws Exception {
+    public static String convertToWav(MultipartFile videoFile, String outputDir) throws Exception {
         // Validate output directory
         File directory = new File(outputDir);
         if (!directory.exists()) {
@@ -26,7 +26,7 @@ public class VideoToAudioConverter {
         
         // Create paths for input and output files
         Path videoPath = Paths.get(directory.getAbsolutePath(), uniqueFilename);
-        String outputPath = videoPath.toString().substring(0, videoPath.toString().lastIndexOf('.')) + "_audio.mp3";
+        String outputPath = videoPath.toString().substring(0, videoPath.toString().lastIndexOf('.')) + "_audio.wav";
         
         // Save uploaded file
         File inputFile = videoPath.toFile();
@@ -37,15 +37,14 @@ public class VideoToAudioConverter {
             grabber.start();
 
             FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(outputPath, 
-                                                                 grabber.getAudioChannels());
+                                                                 1); // Mono channel
             
             try {
-                // Configure for MP3 output
-                recorder.setFormat("mp3");
+                // Configure for WAV output
+                recorder.setFormat("wav");
                 recorder.setSampleRate(16000);  // Set to 16kHz for Whisper
                 recorder.setAudioChannels(1);   // Use mono audio
-                recorder.setAudioCodec(org.bytedeco.ffmpeg.global.avcodec.AV_CODEC_ID_MP3);
-                recorder.setAudioBitrate(128000); // Set bitrate to 128kbps
+                recorder.setAudioCodec(org.bytedeco.ffmpeg.global.avcodec.AV_CODEC_ID_PCM_S16LE); // 16-bit PCM
                 recorder.start();
 
                 Frame frame;

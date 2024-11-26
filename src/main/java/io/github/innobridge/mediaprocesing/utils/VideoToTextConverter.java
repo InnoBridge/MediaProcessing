@@ -10,8 +10,10 @@ import io.github.givimad.whisperjni.WhisperFullParams;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.ShortBuffer;
 import java.nio.file.Path;
-
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
@@ -30,11 +32,11 @@ public class VideoToTextConverter {
     }
 
     public String convertToText(MultipartFile videoFile, String outputDir) throws Exception {
-        // First convert video to audio using a fixed output directory
-        String audioPath = VideoToAudioConverter.convertToMp3(videoFile, "media/audio");
+        // First convert video to WAV
+        String audioPath = VideoToAudioConverter.convertToWav(videoFile, "media/audio");
         File audioFile = new File(audioPath);
 
-        System.out.println("audioPath" +  audioPath);
+        System.out.println("audioPath: " + audioPath);
         StringBuilder transcribedText = new StringBuilder();
         try {
             WhisperContext ctx = whisper.init(modelPath);
@@ -75,40 +77,25 @@ public class VideoToTextConverter {
         return transcribedText.toString();
     }
 
-
-    public float[] readAudioFileSamples(File audioFile) throws IOException, UnsupportedAudioFileException {
-        AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(audioFile);
-        AudioFormat baseFormat = audioInputStream.getFormat();
-        AudioFormat decodedFormat = new AudioFormat(
-                AudioFormat.Encoding.PCM_SIGNED,
-                baseFormat.getSampleRate(),
-                16,
-                baseFormat.getChannels(),
-                baseFormat.getChannels() * 2,
-                baseFormat.getSampleRate(),
-                false
-        );
-
-        AudioInputStream decodedAudioInputStream = AudioSystem.getAudioInputStream(decodedFormat, audioInputStream);
-
-        byte[] audioBytes = decodedAudioInputStream.readAllBytes();
-        int sampleSizeInBytes = decodedFormat.getSampleSizeInBits() / 8;
-        int sampleCount = audioBytes.length / sampleSizeInBytes;
-
-        float[] audioData = new float[sampleCount];
-        for (int i = 0; i < sampleCount; i++) {
-            int sampleValue = 0;
-
-            if (decodedFormat.getSampleSizeInBits() == 16) {
-                // 16-bit samples (assuming little endian)
-                sampleValue = ((audioBytes[i * 2 + 1] & 0xFF) << 8) | (audioBytes[i * 2] & 0xFF);
-                if (sampleValue > 32767) {
-                    sampleValue -= 65536;
-                }
-                audioData[i] = sampleValue / 32768f; // Normalize to [-1, 1]
+    private float[] readAudioFileSamples(File audioFile) throws IOException, UnsupportedAudioFileException {
+        try (AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(audioFile)) {
+            // Read all bytes
+            byte[] audioData = audioInputStream.readAllBytes();
+            
+            // Convert bytes to shorts (16-bit samples)
+            ShortBuffer shortBuffer = ByteBuffer.wrap(audioData)
+                                              .order(ByteOrder.LITTLE_ENDIAN)
+                                              .asShortBuffer();
+            short[] shortSamples = new short[shortBuffer.remaining()];
+            shortBuffer.get(shortSamples);
+            
+            // Convert shorts to normalized floats
+            float[] samples = new float[shortSamples.length];
+            for (int i = 0; i < shortSamples.length; i++) {
+                samples[i] = shortSamples[i] / 32768.0f;
             }
+            
+            return samples;
         }
-
-        return audioData;
     }
 }
