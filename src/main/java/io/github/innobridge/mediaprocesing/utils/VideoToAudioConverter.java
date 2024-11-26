@@ -9,7 +9,7 @@ import java.util.UUID;
 
 public class VideoToAudioConverter {
     
-    public static String convertToWav(MultipartFile videoFile, String outputDir) throws Exception {
+    public static File convertToWavFile(MultipartFile videoFile, String outputDir) throws Exception {
         // Validate output directory
         File directory = new File(outputDir);
         if (!directory.exists()) {
@@ -26,7 +26,9 @@ public class VideoToAudioConverter {
         
         // Create paths for input and output files
         Path videoPath = Paths.get(directory.getAbsolutePath(), uniqueFilename);
-        String outputPath = videoPath.toString().substring(0, videoPath.toString().lastIndexOf('.')) + "_audio.wav";
+        File outputFile = Paths.get(directory.getAbsolutePath(), 
+                                  uniqueFilename.substring(0, uniqueFilename.lastIndexOf('.')) + "_audio.wav")
+                              .toFile();
         
         // Save uploaded file
         File inputFile = videoPath.toFile();
@@ -36,8 +38,7 @@ public class VideoToAudioConverter {
             FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(inputFile);
             grabber.start();
 
-            FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(outputPath, 
-                                                                 1); // Mono channel
+            FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(outputFile, 1); // Mono channel
             
             try {
                 // Configure for WAV output
@@ -54,7 +55,80 @@ public class VideoToAudioConverter {
                     }
                 }
 
-                return outputPath;
+                return outputFile;
+            } finally {
+                // Ensure resources are properly closed
+                try {
+                    if (recorder != null) {
+                        recorder.stop();
+                        recorder.release();
+                    }
+                } finally {
+                    if (grabber != null) {
+                        grabber.stop();
+                        grabber.release();
+                    }
+                }
+            }
+        } finally {
+            // Clean up the input video file
+            inputFile.delete();
+        }
+    }
+
+    public static String convertToWav(MultipartFile videoFile, String outputDir) throws Exception {
+        File wavFile = convertToWavFile(videoFile, outputDir);
+        return wavFile.getAbsolutePath();
+    }
+
+    public static File convertToMp3File(MultipartFile videoFile, String outputDir) throws Exception {
+        // Validate output directory
+        File directory = new File(outputDir);
+        if (!directory.exists()) {
+            directory.mkdirs();
+        }
+        if (!directory.canWrite()) {
+            throw new IllegalArgumentException("Cannot write to output directory: " + outputDir);
+        }
+
+        // Create unique filename for the video
+        String originalFilename = videoFile.getOriginalFilename();
+        String fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
+        String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
+        
+        // Create paths for input and output files
+        Path videoPath = Paths.get(directory.getAbsolutePath(), uniqueFilename);
+        File outputFile = Paths.get(directory.getAbsolutePath(), 
+                                  uniqueFilename.substring(0, uniqueFilename.lastIndexOf('.')) + "_audio.mp3")
+                              .toFile();
+        
+        // Save uploaded file
+        File inputFile = videoPath.toFile();
+        videoFile.transferTo(inputFile);
+        
+        try {
+            FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(inputFile);
+            grabber.start();
+
+            FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(outputFile, 2); // Stereo for better quality
+            
+            try {
+                // Configure for MP3 output
+                recorder.setFormat("mp3");
+                recorder.setSampleRate(44100);  // CD quality
+                recorder.setAudioChannels(2);   // Stereo
+                recorder.setAudioCodec(org.bytedeco.ffmpeg.global.avcodec.AV_CODEC_ID_MP3);
+                recorder.setAudioBitrate(192000); // 192kbps for high quality
+                recorder.start();
+
+                Frame frame;
+                while ((frame = grabber.grab()) != null) {
+                    if (frame.samples != null) {
+                        recorder.record(frame);
+                    }
+                }
+
+                return outputFile;
             } finally {
                 // Ensure resources are properly closed
                 try {

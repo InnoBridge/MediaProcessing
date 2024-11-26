@@ -14,6 +14,9 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 
 @RestController
 @RequestMapping("/api/media")
@@ -24,19 +27,19 @@ public class MediaController {
 
     @Operation(
         summary = "Convert video to audio",
-        description = "Upload a video file and convert it to MP3 audio format",
+        description = "Upload a video file and convert it to WAV or MP3 audio format",
         responses = {
             @ApiResponse(
                 responseCode = "200",
                 description = "Audio extracted successfully",
-                content = @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = AudioConversionResponse.class)
-                )
+                content = {
+                    @Content(mediaType = "audio/wav"),
+                    @Content(mediaType = "audio/mpeg")
+                }
             ),
             @ApiResponse(
                 responseCode = "400",
-                description = "Invalid input (empty file, invalid format, or invalid directory)",
+                description = "Invalid input (empty file or invalid format)",
                 content = @Content(
                     mediaType = "application/json",
                     schema = @Schema(implementation = AudioConversionResponse.class)
@@ -47,9 +50,9 @@ public class MediaController {
     @PostMapping(
         value = "/toaudio",
         consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
-        produces = MediaType.APPLICATION_JSON_VALUE
+        produces = {"audio/wav", "audio/mpeg"}
     )
-    public ResponseEntity<AudioConversionResponse> toAudio(
+    public ResponseEntity<?> toAudio(
             @Parameter(
                 description = "Video file to convert",
                 required = true,
@@ -58,43 +61,58 @@ public class MediaController {
             @RequestParam("file") MultipartFile file,
             
             @Parameter(
-                description = "Output directory path (optional, defaults to system temp directory)",
-                required = false
+                description = "Output audio format (WAV or MP3)",
+                required = false,
+                schema = @Schema(implementation = io.github.innobridge.mediaprocesing.model.MediaType.class)
             )
-            @RequestParam(value = "outputDir", required = false) String outputDir) {
-        
-        AudioConversionResponse response = new AudioConversionResponse();
-        long startTime = System.currentTimeMillis();
+            @RequestParam(value = "type", defaultValue = "WAV") io.github.innobridge.mediaprocesing.model.MediaType type) {
         
         if (file.isEmpty()) {
+            AudioConversionResponse response = new AudioConversionResponse();
             response.setStatus("error");
             response.setMessage("Please select a video file to upload");
             return ResponseEntity.badRequest().body(response);
         }
 
-        String targetDir = outputDir != null && !outputDir.trim().isEmpty() 
-            ? outputDir.trim() 
-            : System.getProperty("java.io.tmpdir") + "/uploads";
-        
         try {
-            String outputPath = VideoToAudioConverter.convertToMp3(file, targetDir);
+            File audioFile;
+            String contentType;
+            String fileExtension;
             
-            response.setStatus("success");
-            response.setOutputPath(outputPath);
-            response.setMessage("Audio extracted successfully as MP3");
-            response.setProcessingTimeMs(System.currentTimeMillis() - startTime);
+            // Convert based on requested type
+            if (type == io.github.innobridge.mediaprocesing.model.MediaType.MP3) {
+                audioFile = VideoToAudioConverter.convertToMp3File(file, "media/audio");
+                contentType = "audio/mpeg";
+                fileExtension = "mp3";
+            } else {
+                audioFile = VideoToAudioConverter.convertToWavFile(file, "media/audio");
+                contentType = "audio/wav";
+                fileExtension = "wav";
+            }
             
-            return ResponseEntity.ok(response);
+            // Read the audio file into a byte array
+            byte[] audioData = Files.readAllBytes(audioFile.toPath());
+            
+            // Clean up the audio file after reading
+            audioFile.delete();
+            
+            // Return the audio file as the response
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .contentLength(audioData.length)
+                    .header("Content-Disposition", "attachment; filename=\"" + 
+                            file.getOriginalFilename().replaceFirst("[.][^.]+$", "." + fileExtension) + "\"")
+                    .body(audioData);
             
         } catch (IllegalArgumentException e) {
+            AudioConversionResponse response = new AudioConversionResponse();
             response.setStatus("error");
             response.setMessage(e.getMessage());
-            response.setProcessingTimeMs(System.currentTimeMillis() - startTime);
             return ResponseEntity.badRequest().body(response);
         } catch (Exception e) {
+            AudioConversionResponse response = new AudioConversionResponse();
             response.setStatus("error");
             response.setMessage("Error extracting audio: " + e.getMessage());
-            response.setProcessingTimeMs(System.currentTimeMillis() - startTime);
             return ResponseEntity.internalServerError().body(response);
         }
     }
