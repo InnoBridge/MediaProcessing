@@ -18,6 +18,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 
+import static io.github.innobridge.mediaprocesing.model.MediaType.MP3;
+import static io.github.innobridge.mediaprocesing.model.MediaType.WAV;
+
 @RestController
 @RequestMapping("/api/media")
 public class MediaController {
@@ -75,20 +78,9 @@ public class MediaController {
         }
 
         try {
-            File audioFile;
-            String contentType;
-            String fileExtension;
-            
-            // Convert based on requested type
-            if (type == io.github.innobridge.mediaprocesing.model.MediaType.MP3) {
-                audioFile = VideoToAudioConverter.convertToMp3File(file, "media/audio");
-                contentType = "audio/mpeg";
-                fileExtension = "mp3";
-            } else {
-                audioFile = VideoToAudioConverter.convertToWavFile(file, "media/audio");
-                contentType = "audio/wav";
-                fileExtension = "wav";
-            }
+            File audioFile = VideoToAudioConverter.convertToAudioFile(file, "media/audio", type);
+            String contentType = "audio/" + type.extension;;
+            String fileExtension = type.extension;
             
             // Read the audio file into a byte array
             byte[] audioData = Files.readAllBytes(audioFile.toPath());

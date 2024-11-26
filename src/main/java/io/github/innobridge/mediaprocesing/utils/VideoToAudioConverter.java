@@ -2,14 +2,19 @@ package io.github.innobridge.mediaprocesing.utils;
 
 import org.bytedeco.javacv.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import io.github.innobridge.mediaprocesing.model.MediaType;
+
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.UUID;
+import static org.bytedeco.ffmpeg.global.avcodec.*;
 
 public class VideoToAudioConverter {
-    
-    public static File convertToWavFile(MultipartFile videoFile, String outputDir) throws Exception {
+
+    public static File convertToAudioFile(MultipartFile videoFile, String outputDir, 
+                                         MediaType format) throws Exception {
         // Validate output directory
         File directory = new File(outputDir);
         if (!directory.exists()) {
@@ -19,15 +24,16 @@ public class VideoToAudioConverter {
             throw new IllegalArgumentException("Cannot write to output directory: " + outputDir);
         }
 
-        // Create unique filename for the video
+        // Create unique filename
         String originalFilename = videoFile.getOriginalFilename();
         String fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
         String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
         
-        // Create paths for input and output files
+        // Create paths
         Path videoPath = Paths.get(directory.getAbsolutePath(), uniqueFilename);
         File outputFile = Paths.get(directory.getAbsolutePath(), 
-                                  uniqueFilename.substring(0, uniqueFilename.lastIndexOf('.')) + "_audio.wav")
+                                  uniqueFilename.substring(0, uniqueFilename.lastIndexOf('.')) + 
+                                  "_audio." + format.extension)
                               .toFile();
         
         // Save uploaded file
@@ -35,117 +41,57 @@ public class VideoToAudioConverter {
         videoFile.transferTo(inputFile);
         
         try {
-            FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(inputFile);
-            grabber.start();
-
-            FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(outputFile, 1); // Mono channel
-            
-            try {
-                // Configure for WAV output
-                recorder.setFormat("wav");
-                recorder.setSampleRate(16000);  // Set to 16kHz for Whisper
-                recorder.setAudioChannels(1);   // Use mono audio
-                recorder.setAudioCodec(org.bytedeco.ffmpeg.global.avcodec.AV_CODEC_ID_PCM_S16LE); // 16-bit PCM
-                recorder.start();
-
-                Frame frame;
-                while ((frame = grabber.grab()) != null) {
-                    if (frame.samples != null) {
-                        recorder.record(frame);
-                    }
-                }
-
-                return outputFile;
-            } finally {
-                // Ensure resources are properly closed
-                try {
-                    if (recorder != null) {
-                        recorder.stop();
-                        recorder.release();
-                    }
-                } finally {
-                    if (grabber != null) {
-                        grabber.stop();
-                        grabber.release();
-                    }
-                }
-            }
+            return convertVideo(inputFile, outputFile, format);
         } finally {
             // Clean up the input video file
             inputFile.delete();
         }
     }
 
-    public static String convertToWav(MultipartFile videoFile, String outputDir) throws Exception {
-        File wavFile = convertToWavFile(videoFile, outputDir);
+    private static File convertVideo(File inputFile, File outputFile, MediaType format) throws Exception {
+        FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(inputFile);
+        grabber.start();
+
+        FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(outputFile, format.channels);
+        
+        try {
+            // Configure for output format
+            recorder.setFormat(format.extension);
+            recorder.setSampleRate(format.sampleRate);
+            recorder.setAudioChannels(format.channels);
+            recorder.setAudioCodec(format.codec);
+            if (format.bitrate != null) {
+                recorder.setAudioBitrate(format.bitrate);
+            }
+            recorder.start();
+
+            // Process frames
+            Frame frame;
+            while ((frame = grabber.grab()) != null) {
+                if (frame.samples != null) {
+                    recorder.record(frame);
+                }
+            }
+
+            return outputFile;
+        } finally {
+            // Ensure resources are properly closed
+            try {
+                if (recorder != null) {
+                    recorder.stop();
+                    recorder.release();
+                }
+            } finally {
+                if (grabber != null) {
+                    grabber.stop();
+                    grabber.release();
+                }
+            }
+        }
+    }
+
+        public static String convertToWav(MultipartFile videoFile, String outputDir) throws Exception {
+        File wavFile = convertToAudioFile(videoFile, outputDir, MediaType.WAV);
         return wavFile.getAbsolutePath();
-    }
-
-    public static File convertToMp3File(MultipartFile videoFile, String outputDir) throws Exception {
-        // Validate output directory
-        File directory = new File(outputDir);
-        if (!directory.exists()) {
-            directory.mkdirs();
-        }
-        if (!directory.canWrite()) {
-            throw new IllegalArgumentException("Cannot write to output directory: " + outputDir);
-        }
-
-        // Create unique filename for the video
-        String originalFilename = videoFile.getOriginalFilename();
-        String fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
-        String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
-        
-        // Create paths for input and output files
-        Path videoPath = Paths.get(directory.getAbsolutePath(), uniqueFilename);
-        File outputFile = Paths.get(directory.getAbsolutePath(), 
-                                  uniqueFilename.substring(0, uniqueFilename.lastIndexOf('.')) + "_audio.mp3")
-                              .toFile();
-        
-        // Save uploaded file
-        File inputFile = videoPath.toFile();
-        videoFile.transferTo(inputFile);
-        
-        try {
-            FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(inputFile);
-            grabber.start();
-
-            FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(outputFile, 2); // Stereo for better quality
-            
-            try {
-                // Configure for MP3 output
-                recorder.setFormat("mp3");
-                recorder.setSampleRate(44100);  // CD quality
-                recorder.setAudioChannels(2);   // Stereo
-                recorder.setAudioCodec(org.bytedeco.ffmpeg.global.avcodec.AV_CODEC_ID_MP3);
-                recorder.setAudioBitrate(192000); // 192kbps for high quality
-                recorder.start();
-
-                Frame frame;
-                while ((frame = grabber.grab()) != null) {
-                    if (frame.samples != null) {
-                        recorder.record(frame);
-                    }
-                }
-
-                return outputFile;
-            } finally {
-                // Ensure resources are properly closed
-                try {
-                    if (recorder != null) {
-                        recorder.stop();
-                        recorder.release();
-                    }
-                } finally {
-                    if (grabber != null) {
-                        grabber.stop();
-                        grabber.release();
-                    }
-                }
-            }
-        } finally {
-            // Clean up the input video file
-            inputFile.delete();
-        }
     }
 }
