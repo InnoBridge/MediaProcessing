@@ -36,7 +36,6 @@ public class VideoToTextConverter {
         String audioPath = VideoToAudioConverter.convertToWav(videoFile, "media/audio");
         File audioFile = new File(audioPath);
 
-        System.out.println("audioPath: " + audioPath);
         StringBuilder transcribedText = new StringBuilder();
         try {
             WhisperContext ctx = whisper.init(modelPath);

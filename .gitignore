@@ -39,6 +39,10 @@ build/
 # Whisper Models
 src/main/resources/models/
 
+# Model files
+models/
+media/
+
 # Media Files
 media/video/
 

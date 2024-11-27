@@ -79,7 +79,7 @@ public class MediaController {
 
         try {
             File audioFile = VideoToAudioConverter.convertToAudioFile(file, "media/audio", type);
-            String contentType = "audio/" + type.extension;;
+            String contentType = "audio/" + type.extension;
             String fileExtension = type.extension;
             
             // Read the audio file into a byte array
