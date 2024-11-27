@@ -28,7 +28,7 @@ RUN pip3 install --no-cache-dir huggingface-hub
 RUN mkdir -p /app/src/main/resources/models /app/media/audio
 
 # Download Whisper model
-RUN huggingface-cli download ggerganov/whisper.cpp ggml-base-q5_1.bin --local-dir /app/src/main/resources/models --local-dir-use-symlinks False
+RUN huggingface-cli download ggerganov/whisper.cpp ggml-tiny-q5_1.bin --local-dir /app/src/main/resources/models --local-dir-use-symlinks False
 
 # Environment variable for model path
 ENV MODEL_PATH=/app/models/ggml-tiny-q5_1.bin
