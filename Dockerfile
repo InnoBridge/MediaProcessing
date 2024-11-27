@@ -14,15 +14,14 @@ RUN pip3 install huggingface-cli
 # Set working directory
 WORKDIR /app
 
+# Create directories
+RUN mkdir -p /app/models /app/media/audio
+
 # Download Whisper model
 RUN huggingface-cli download ggerganov/whisper.cpp ggml-tiny-q5_1.bin --local-dir /app/models --local-dir-use-symlinks False
 
 # Copy application files
 COPY target/*.jar app.jar
-COPY models/ /app/models/
-
-# Create directory for media files
-RUN mkdir -p media/audio
 
 # Environment variable for model path
 ENV MODEL_PATH=/app/models/ggml-tiny-q5_1.bin
