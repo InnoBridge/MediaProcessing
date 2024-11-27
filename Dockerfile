@@ -35,7 +35,7 @@ RUN mkdir -p /src/main/resources/models /app/media/audio
 RUN huggingface-cli download ggerganov/whisper.cpp ggml-tiny-q5_1.bin --local-dir src/main/resources/models --local-dir-use-symlinks False
 
 # Copy application files
-COPY target/*.jar app.jar
+# COPY target/*.jar app.jar
 
 # Environment variable for model path
 ENV MODEL_PATH=/app/models/ggml-tiny-q5_1.bin
