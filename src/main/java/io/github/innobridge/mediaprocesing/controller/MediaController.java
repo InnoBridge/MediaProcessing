@@ -15,11 +15,8 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
 
-import static io.github.innobridge.mediaprocesing.model.MediaType.MP3;
-import static io.github.innobridge.mediaprocesing.model.MediaType.WAV;
 
 @RestController
 @RequestMapping("/api/media")
