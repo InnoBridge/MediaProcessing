@@ -15,11 +15,8 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
 
-import static io.github.innobridge.mediaprocesing.model.MediaType.MP3;
-import static io.github.innobridge.mediaprocesing.model.MediaType.WAV;
 
 @RestController
 @RequestMapping("/api/media")
@@ -79,7 +76,7 @@ public class MediaController {
 
         try {
             File audioFile = VideoToAudioConverter.convertToAudioFile(file, "media/audio", type);
-            String contentType = "audio/" + type.extension;;
+            String contentType = "audio/" + type.extension;
             String fileExtension = type.extension;
             
             // Read the audio file into a byte array
